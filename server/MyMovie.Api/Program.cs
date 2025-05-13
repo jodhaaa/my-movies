@@ -12,6 +12,17 @@ builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddEnvironmentVariables();
 
+builder.Services.AddCors(options =>
+{
+    var cors = builder.Configuration.GetSection("Cors").Get<string[]>();
+    options.AddPolicy("CorsPolicy", policy =>
+    {
+        policy.WithOrigins(cors) // Allowed origins
+            .AllowAnyMethod() // Allow all HTTP methods
+            .AllowAnyHeader(); // Allow all headers
+    });
+});
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -37,6 +48,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("CorsPolicy");
 app.UseHttpsRedirection();
 
 // No pagination, fetch all data for the moment

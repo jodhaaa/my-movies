@@ -1,10 +1,10 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using FluentResults;
+using Microsoft.Extensions.Logging;
 using MyMovie.Application.Abstraction.Movies;
 using MyMovie.Application.Dto.Config;
 using MyMovie.Application.Dto.Movie;
 using Newtonsoft.Json;
 using System.Net;
-using FluentResults;
 
 namespace MyMovie.Infrastructure.Movies.Providers
 {
@@ -16,12 +16,14 @@ namespace MyMovie.Infrastructure.Movies.Providers
         public abstract string ProviderName { get; }
 
         private readonly HttpClient _httpClient;
+        private readonly HttpClient _imageHttpClient;
         private readonly ILogger _logger;
         private readonly Provider _provider;
 
         protected BaseMovieProvider(Provider[] providers, IHttpClientFactory httpClientFactor, ILoggerFactory loggerFactory)
         {
             _httpClient = httpClientFactor.CreateClient(ProviderName);
+            _imageHttpClient = httpClientFactor.CreateClient();
             _logger = loggerFactory.CreateLogger<BaseMovieProvider>();
             _provider = providers.First(p => p.Name == ProviderName);
         }
@@ -70,7 +72,48 @@ namespace MyMovie.Infrastructure.Movies.Providers
             var movie = JsonConvert.DeserializeObject<MovieDto>(result.Value);
             _logger.LogInformation($"{GetType().Name} end getting movie meta data.");
 
+            var imageResult = await ValidateImageUrl(movie?.Poster);
+            if (imageResult.IsFailed)
+            {
+                movie.Poster = string.Empty;
+            }
+
             return Result.Ok(movie);
+        }
+
+        /// <summary>
+        /// Validate the movie poster url,
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        private async Task<Result> ValidateImageUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return Result.Fail("Invalid Url");
+            }
+
+            try
+            {
+                HttpResponseMessage responseMessage = await _imageHttpClient.GetAsync(url);
+
+                if (responseMessage.StatusCode == HttpStatusCode.OK 
+                    && responseMessage.Content.Headers.ContentLength > 0)
+                {
+                    // Api Data
+                    return Result.Ok();
+                }
+                else
+                {
+                    _logger.LogError($"Error: {GetType().Name} invalid url: { url }");
+                    return Result.Fail("Invalid Url");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error: {GetType().Name} invalid url: {url}");
+                return Result.Fail(ex.Message);
+            }
         }
 
         /// <summary>

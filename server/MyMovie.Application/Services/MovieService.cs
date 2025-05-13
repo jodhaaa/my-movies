@@ -114,6 +114,8 @@ namespace MyMovie.Application.Services
                         _logger.LogError("Error fetching data: SyncMoviesAsync: GetByIdAsync");
                        continue;
                     }
+                    
+
 
                     var result = await UpsertMovieAsync(getIdResult.Value, provider.ProviderName);
                     if (result.IsFailed)

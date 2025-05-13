@@ -132,7 +132,10 @@ namespace MyMovie.Infrastructure.Data
                         UPDATE SET
                             Title = MAX(Title, excluded.Title),
                             Year = MAX(Year, excluded.Year),
-                            Poster = MAX(Poster, excluded.Poster),
+                            Poster = CASE 
+                                        WHEN excluded.Poster = '' THEN Poster
+                                        ELSE excluded.Poster
+                                    END,
                             Type = MAX(Type, excluded.Type),
                             Rated = MAX(Rated, excluded.Rated),
                             Released = MAX(Released, excluded.Released),
